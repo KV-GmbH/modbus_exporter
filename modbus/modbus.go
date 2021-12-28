@@ -288,9 +288,17 @@ func parseModbusData(d config.MetricDef, rawData []byte) (float64, error) {
 			if d.BitOffset == nil {
 				return float64(0), fmt.Errorf("expected bit position on boolean data type")
 			}
+			
+			//Fix for Modbus Bool on long ints
 
-			// Convert byte to uint16
-			data := uint16(rawData[0])
+			if len(rawData) != 2 {
+				return float64(0), &InsufficientRegistersError{fmt.Sprintf("expected 1, got %v", len(rawData))}
+			}
+			rawDataWithEndianness, err := convertEndianness16b(d.Endianness, rawData)
+			if err != nil {
+				return float64(0), err
+			}
+			data := binary.BigEndian.Uint16(rawDataWithEndianness)
 
 			if data&(uint16(1)<<uint16(*d.BitOffset)) > 0 {
 				return float64(1), nil
